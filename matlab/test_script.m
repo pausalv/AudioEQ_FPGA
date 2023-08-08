@@ -14,6 +14,6 @@ G = 10;
 [b1,a1] = peak_filter(fc,Q,-G,fs);
 [b2,a2] = peak_filter1(fc,Q,-G,fs);
 
-dibujarFreqZ(b1,a1,4096,fs,3);
-dibujarFreqZ(b2,a2,4096,fs,4);
+drawFreqZ(b1,a1,4096,fs,3);
+drawFreqZ(b2,a2,4096,fs,4);
 % ylim([0 10])
