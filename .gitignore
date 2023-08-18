@@ -29,3 +29,7 @@ codegen/
 
 # Octave session info
 octave-workspace
+
+# Simulation output
+sim_build/
+__pycache__/
