@@ -119,7 +119,7 @@ def test_register(parameters):
         
     module="test_MULT_ACC", # name of the file that contains @cocotb.test() -- this file
     simulator="icarus",
-    waves="waves.vcd",
+    waves=True,
 
     parameters=parameters,
     extra_env=parameters,
