@@ -1,14 +1,15 @@
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import Timer, RisingEdge, FallingEdge, ClockCycles
+from cocotb.triggers import FallingEdge, ClockCycles
+from models.MAC import MAC
 
 import random
 # import numpy as np
 
 async def reset(dut):
-  await ClockCycles(dut.ic_clk, 2) # wait for 2 clock cycles
+  await ClockCycles(dut.ic_clk, 2, rising=False) # wait for 2 clock cycles
   dut.ic_rst.value = 1
-  await ClockCycles(dut.ic_clk, 2) # wait for 2 clock cycles
+  await ClockCycles(dut.ic_clk, 2, rising=False) # wait for 2 clock cycles
   dut.ic_rst.value = 0
   await ClockCycles(dut.ic_clk, 2) # wait for 2 clock cycles
 
@@ -22,6 +23,8 @@ async def mult_acc_tb1(dut):
   clock = Clock(dut.ic_clk, 10, units="ns") # create a clock for dut.clk pin with 10 ns period
   cocotb.start_soon(clock.start()) # start clock in a seperate thread
 
+  model = MAC(dut.Win, dut.Wc, dut.Wout)
+
   dut.id_din.value = 0
   dut.id_coef.value = 0
   dut.ic_ce.value = 0
@@ -30,7 +33,6 @@ async def mult_acc_tb1(dut):
 
   await reset(dut)
 
-  acc = 0
   await FallingEdge(dut.ic_clk)
 
   ''' Assign random values to input, wait for a clock and verify output '''
@@ -39,18 +41,19 @@ async def mult_acc_tb1(dut):
     din = random.randint(pow(-2,int(dut.Win)-1), pow(2,int(dut.Win)-1)-1) # generate a random number between -2^Win and 2^(Win-1)-1
     coef = random.randint(pow(-2,int(dut.Win)-1), pow(2,int(dut.Win)-1)-1) # generate a random number between -2^Wc and 2^(Wc-1)-1
 
-    exact = acc + din * coef # compute the exact value
-    acc = exact # update the accumulator
-
-
     # drive the input pins
     dut.id_din.value = din
     dut.id_coef.value = coef
     dut.ic_ce.value = 1
+
+    model.set_din(din)
+    model.set_coef(coef)
+    model.set_ce(1)
         
     await FallingEdge(dut.ic_clk)
         
     computed = dut.od_dout.value.signed_integer # Read pins as signed integer.
+    exact = model.get_dout() # compute the exact value
         
     assert exact == computed, f"Failed on the {i}th cycle. Got {computed}, expected {exact}" # If any assertion fails, the test fails, and the string would be printed in console
     print(f"Driven value: {exact} \t received value: {computed}") 
@@ -63,15 +66,18 @@ async def mult_acc_tb2(dut):
   clock = Clock(dut.ic_clk, 10, units="ns") # create a clock for dut.clk pin with 10 ns period
   cocotb.start_soon(clock.start()) # start clock in a seperate thread
 
+  model = MAC(dut.Win, dut.Wc, dut.Wout)
+
   dut.id_din.value = 0
   dut.id_coef.value = 0
   dut.ic_ce.value = 0
   dut.ic_rst.value = 0
   dut.ic_neg_acc.value = 1
 
+  model.set_neg_acc(1)
+
   await reset(dut)
 
-  acc = 0
   await FallingEdge(dut.ic_clk)
 
   ''' Assign random values to input, wait for a clock and verify output '''
@@ -80,18 +86,20 @@ async def mult_acc_tb2(dut):
     din = random.randint(pow(-2,int(dut.Win)-1), pow(2,int(dut.Win)-1)-1) # generate a random number between -2^Win and 2^(Win-1)-1
     coef = random.randint(pow(-2,int(dut.Win)-1), pow(2,int(dut.Win)-1)-1) # generate a random number between -2^Wc and 2^(Wc-1)-1
 
-    exact = acc - din * coef # compute the exact value
-    acc = exact # update the accumulator
-
-
     # drive the input pins
     dut.id_din.value = din
     dut.id_coef.value = coef
     dut.ic_ce.value = 1
 
+    model.set_din(din)
+    model.set_coef(coef)
+    model.set_ce(1)
+
     await FallingEdge(dut.ic_clk)
         
     computed = dut.od_dout.value.signed_integer # Read pins as signed integer.
+
+    exact = model.get_dout() # compute the exact value
         
     assert exact == computed, f"Failed on the {i}th cycle. Got {computed}, expected {exact}" # If any assertion fails, the test fails, and the string would be printed in console
     print(f"Driven value: {exact} \t received value: {computed}") 
@@ -119,7 +127,7 @@ def test_register(parameters):
         
     module="test_MULT_ACC", # name of the file that contains @cocotb.test() -- this file
     simulator="icarus",
-    waves=True,
+    waves="wave.vcd",
 
     parameters=parameters,
     extra_env=parameters,
