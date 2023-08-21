@@ -33,3 +33,4 @@ octave-workspace
 # Simulation output
 sim_build/
 __pycache__/
+*.gtkw
